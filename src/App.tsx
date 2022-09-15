@@ -1,184 +1,46 @@
 import React from "react";
 import { Stage, Layer, Rect, Text, Arrow, Line } from "react-konva";
+import { useSub, Store, ArchvData, Connection } from "./state";
 
-type Connection = { from: string; to: string };
-type ArchvData = { services: string[]; grpc: Connection[] };
 type ServiceTypes = { gateway: string[]; aggregator: string[]; data: string[] };
 type Position = { x: number; y: number };
 
-const testData = {
-  services: [
-    "app-alerting-service",
-    "app-gateway-service",
-    "app-metrics-service",
-    "article-delta-sync-service",
-    "article-fstore-service",
-    "article-import-mgmt-service",
-    "article-import-service",
-    "article-masterdata-service",
-    "article-service",
-    "auth-service",
-    "booking-fstore-service",
-    "booking-print-data-service",
-    "booking-service",
-    "checklist-export-service",
-    "checklist-fstore-service",
-    "checklist-import-service",
-    "complaint-fstore-service",
-    "complaint-printer-service",
-    "config-service",
-    "customer-data-service",
-    "customer-order-export-service",
-    "customer-order-import-service",
-    "delivery-service",
-    "esl-proxy-service",
-    "export-article-service",
-    "export-booking-service",
-    "export-print-service",
-    "gift-hamper-import-service",
-    "idm-gateway-service",
-    "inventory-booking-service",
-    "inventory-export-service",
-    "inventory-fstore-service",
-    "inventory-print-data-service",
-    "inventory-service",
-    "masterdata-service",
-    "mhd-export-service",
-    "mhd-fstore-service",
-    "mhd-import-service",
-    "order-data-service",
-    "order-export-service",
-    "order-fstore-service",
-    "order-online-data-service",
-    "order-service",
-    "pickjob-fstore-service",
-    "pickjob-service",
-    "pickjob-shelves-order-service",
-    "rebook-export-service",
-    "rebook-fstore-service",
-    "relocation-export-service",
-    "relocation-fstore-service",
-    "return-fstore-service",
-    "sales-export-service",
-    "sales-fstore-service",
-    "sap-gateway-service",
-    "sent-documents-service",
-    "stock-check-online-data-service",
-    "stock-receipt-alert-service",
-    "stock-receipt-report-service",
-    "supplier-service",
-    "unique-device-id-service",
-    "user-tracking-service",
-    "validation-service",
-    "write-off-export-service",
-    "write-off-fstore-service",
-  ],
-  grpc: [
-    { from: "app-gateway-service", to: "app-metrics-service" },
-    { from: "app-gateway-service", to: "article-delta-sync-service" },
-    { from: "app-gateway-service", to: "article-import-mgmt-service" },
-    { from: "app-gateway-service", to: "article-import-service" },
-    { from: "app-gateway-service", to: "article-masterdata-service" },
-    { from: "app-gateway-service", to: "article-service" },
-    { from: "app-gateway-service", to: "auth-service" },
-    { from: "app-gateway-service", to: "booking-service" },
-    { from: "app-gateway-service", to: "config-service" },
-    { from: "app-gateway-service", to: "customer-data-service" },
-    { from: "app-gateway-service", to: "delivery-service" },
-    { from: "app-gateway-service", to: "export-booking-service" },
-    { from: "app-gateway-service", to: "export-print-service" },
-    { from: "app-gateway-service", to: "gift-hamper-import-service" },
-    { from: "app-gateway-service", to: "inventory-service" },
-    { from: "app-gateway-service", to: "masterdata-service" },
-    { from: "app-gateway-service", to: "order-data-service" },
-    { from: "app-gateway-service", to: "order-online-data-service" },
-    { from: "app-gateway-service", to: "order-service" },
-    { from: "app-gateway-service", to: "pickjob-service" },
-    { from: "app-gateway-service", to: "pickjob-shelves-order-service" },
-    { from: "app-gateway-service", to: "stock-check-online-data-service" },
-    { from: "app-gateway-service", to: "stock-receipt-report-service" },
-    { from: "app-gateway-service", to: "supplier-service" },
-    { from: "app-gateway-service", to: "unique-device-id-service" },
-    { from: "app-gateway-service", to: "sent-documents-service" },
-    { from: "app-gateway-service", to: "user-tracking-service" },
-    { from: "app-gateway-service", to: "validation-service" },
-    { from: "article-delta-sync-service", to: "article-import-service" },
-    { from: "article-import-service", to: "article-import-mgmt-service" },
-    { from: "article-import-service", to: "article-delta-sync-service" },
-    { from: "article-import-service", to: "app-gateway-service" },
-    { from: "article-import-service", to: "article-service" },
-    { from: "article-service", to: "article-import-service" },
-    { from: "booking-fstore-service", to: "booking-service" },
-    { from: "booking-print-data-service", to: "article-import-service" },
-    { from: "booking-print-data-service", to: "booking-service" },
-    { from: "booking-print-data-service", to: "masterdata-service" },
-    { from: "booking-print-data-service", to: "supplier-service" },
-    { from: "booking-print-data-service", to: "article-service" },
-    { from: "booking-service", to: "delivery-service" },
-    { from: "booking-service", to: "order-service" },
-    { from: "complaint-fstore-service", to: "booking-service" },
-    { from: "complaint-printer-service", to: "article-import-service" },
-    { from: "complaint-printer-service", to: "booking-service" },
-    { from: "complaint-printer-service", to: "masterdata-service" },
-    { from: "complaint-printer-service", to: "supplier-service" },
-    { from: "complaint-printer-service", to: "article-service" },
-    { from: "customer-order-export-service", to: "pickjob-service" },
-    { from: "customer-order-import-service", to: "article-service" },
-    { from: "customer-order-import-service", to: "pickjob-service" },
-    {
-      from: "customer-order-import-service",
-      to: "pickjob-shelves-order-service",
-    },
-    { from: "customer-order-import-service", to: "article-import-service" },
-    { from: "delivery-service", to: "booking-service" },
-    { from: "delivery-service", to: "app-gateway-service" },
-    { from: "export-article-service", to: "article-fstore-service" },
-    { from: "export-article-service", to: "article-import-service" },
-    { from: "export-article-service", to: "article-service" },
-    { from: "idm-gateway-service", to: "auth-service" },
-    { from: "inventory-fstore-service", to: "inventory-booking-service" },
-    { from: "inventory-print-data-service", to: "inventory-booking-service" },
-    { from: "mhd-export-service", to: "mhd-fstore-service" },
-    { from: "order-data-service", to: "article-service" },
-    { from: "order-data-service", to: "masterdata-service" },
-    { from: "order-data-service", to: "supplier-service" },
-    { from: "order-data-service", to: "article-import-service" },
-    { from: "order-data-service", to: "config-service" },
-    { from: "order-export-service", to: "sent-documents-service" },
-    { from: "order-fstore-service", to: "sent-documents-service" },
-    { from: "order-fstore-service", to: "order-export-service" },
-    { from: "pickjob-fstore-service", to: "pickjob-service" },
-    { from: "relocation-fstore-service", to: "relocation-export-service" },
-    { from: "return-fstore-service", to: "booking-service" },
-    { from: "sales-fstore-service", to: "sales-export-service" },
-    { from: "sap-gateway-service", to: "article-service" },
-    { from: "sap-gateway-service", to: "masterdata-service" },
-    { from: "sap-gateway-service", to: "supplier-service" },
-    { from: "stock-receipt-alert-service", to: "article-import-service" },
-    { from: "stock-receipt-alert-service", to: "delivery-service" },
-    { from: "stock-receipt-alert-service", to: "order-service" },
-    { from: "stock-receipt-alert-service", to: "article-service" },
-    { from: "stock-receipt-alert-service", to: "supplier-service" },
-    { from: "stock-receipt-report-service", to: "delivery-service" },
-    { from: "stock-receipt-report-service", to: "masterdata-service" },
-    { from: "stock-receipt-report-service", to: "order-service" },
-    { from: "stock-receipt-report-service", to: "supplier-service" },
-    { from: "validation-service", to: "article-import-service" },
-    { from: "validation-service", to: "article-service" },
-  ],
-};
-
 export default function App() {
-  let types = inferServiceTypes(testData);
+  const { archvData } = useSub(({ archvData }) => ({ archvData }));
+  console.log("rendering", archvData);
 
-  let width = window.innerWidth;
-  let height = window.innerHeight - 30;
+  function onFileChange(e: any) {
+    let reader = new FileReader();
+    reader.onloadend = () => {
+      let data: ArchvData = JSON.parse(reader.result as string);
+      Store.set(({ archvData }) => ({
+        archvData: data,
+      }));
+    };
+    reader.readAsText(e.target.files[0]);
+  }
+
+  let content;
+  if (archvData) {
+    let width = window.innerWidth;
+    let height = window.innerHeight - 30;
+    let types = inferServiceTypes(archvData);
+    content = (
+      <Stage width={width} height={height}>
+        <Layer>{buildMicroserviceGraph(width, height, types, archvData)}</Layer>
+      </Stage>
+    );
+  } else {
+    content = <span>Please upload a arch.json file above</span>;
+  }
+
   return (
     <div>
       <h1>archv</h1>
-      <Stage width={width} height={height}>
-        <Layer>{buildMicroserviceGraph(width, height, types, testData)}</Layer>
-      </Stage>
+      <div>
+        <input type="file" onChange={onFileChange} />
+      </div>
+      {content}
     </div>
   );
 }
@@ -342,7 +204,7 @@ function buildMicroserviceGraph(
   });
 
   // draw grpc connections between services
-
+  /*
   data.grpc.forEach((grpc) => {
     const from = svcPositions.get(grpc.from);
     const to = svcPositions.get(grpc.to);
@@ -356,7 +218,7 @@ function buildMicroserviceGraph(
         />
       );
     }
-  });
+  });*/
 
   return result;
 }
