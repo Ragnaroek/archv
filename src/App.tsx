@@ -1,13 +1,13 @@
 import React from "react";
-import { Stage, Layer, Rect, Text, Arrow, Line } from "react-konva";
+import { Stage, Layer, Rect, Text, Line } from "react-konva";
 import { useSub, Store, ArchvData, Connection } from "./state";
 
 type ServiceTypes = { gateway: string[]; aggregator: string[]; data: string[] };
 type Position = { x: number; y: number };
+type SectionInfo = { y: number; midSection: boolean };
 
 export default function App() {
   const { archvData } = useSub(({ archvData }) => ({ archvData }));
-  console.log("rendering", archvData);
 
   function onFileChange(e: any) {
     let reader = new FileReader();
@@ -84,6 +84,7 @@ const hBorder = 100;
 const w = 100;
 const h = 80;
 const sectionGap = 100;
+const svcGap = 5;
 const busW = 8; //use a even number here
 const outLineGap = 2;
 
@@ -99,7 +100,8 @@ function buildMicroserviceGraph(
   let y = vBorder;
 
   let svcPositions = new Map<String, Position>();
-  let sectionEndsY: number[] = [];
+  let sectionEndsY: SectionInfo[] = [];
+  let svcsPerRow = (width - hBorder * 2) / w + svcGap;
 
   let numSection = 0; //TODO use a normal loop instead of forEach here, numSection becomes the i of the loop
   [
@@ -109,12 +111,18 @@ function buildMicroserviceGraph(
   ].forEach((section) => {
     const svcList = section.svc;
     const color: string = section.color;
+    const numRows = Math.ceil(svcList.length / svcsPerRow);
     let row = 0;
     for (let i = 0; i < svcList.length; i++) {
       const svc = svcList[i];
       if (x + w + hBorder > width) {
         x = hBorder;
-        y += h + 5;
+        if (row % 2 === 1) {
+          y += h + sectionGap / 2;
+          sectionEndsY.push({ y, midSection: true });
+        } else {
+          y += h + svcGap;
+        }
         row += 1;
       }
 
@@ -143,13 +151,19 @@ function buildMicroserviceGraph(
         let yStart;
         let xEnd = conX;
         let yEnd;
+        let lineLen;
+        if (row === 0 || row === numRows) {
+          lineLen = sectionGap / 2;
+        } else {
+          lineLen = sectionGap / 4;
+        }
         if (numSection === 0 || row % 2 === 1) {
           //first section always goes down
           yStart = y + h;
-          yEnd = y + h + sectionGap / 2;
+          yEnd = y + h + lineLen;
         } else {
           yStart = y;
-          yEnd = y - sectionGap / 2;
+          yEnd = y - lineLen;
         }
 
         result.push(
@@ -161,26 +175,25 @@ function buildMicroserviceGraph(
         );
         conX += outLineGap + 1;
       }
-
-      x += w + 5;
+      x += w + svcGap;
     }
 
     x = hBorder;
     y += h + sectionGap;
-    sectionEndsY.push(y);
+    sectionEndsY.push({ y, midSection: false });
     numSection += 1;
   });
 
   // Add the bus connections
-  //v bus on the left
+  // vertical bus on the left
   for (var i = 0; i < sectionEndsY.length - 1; i++) {
     result.push(
       <Line
         points={[
           hBorder / 2,
-          sectionEndsY[i] - sectionGap / 2,
+          sectionEndsY[i].y - sectionGap / 2,
           hBorder / 2,
-          sectionEndsY[i + 1] - sectionGap / 2,
+          sectionEndsY[i + 1].y - sectionGap / 2,
         ]}
         stroke="black"
         strokeWidth={busW}
@@ -188,38 +201,31 @@ function buildMicroserviceGraph(
     );
   }
 
-  sectionEndsY.forEach((endY) => {
+  // horizontal bus lines
+  sectionEndsY.forEach((sectionInfo) => {
+    const endY = sectionInfo.y;
+
+    let y;
+    if (sectionInfo.midSection) {
+      y = endY - sectionGap / 4;
+    } else {
+      y = endY - sectionGap / 2;
+    }
+    let strokeWidth;
+    if (sectionInfo.midSection) {
+      strokeWidth = busW / 2;
+    } else {
+      strokeWidth = busW;
+    }
+
     result.push(
       <Line
-        points={[
-          hBorder / 2 - busW / 2,
-          endY - sectionGap / 2,
-          width - hBorder,
-          endY - sectionGap / 2,
-        ]}
+        points={[hBorder / 2 - busW / 2, y, width - hBorder, y]}
         stroke="black"
-        strokeWidth={busW}
+        strokeWidth={strokeWidth}
       />
     );
   });
-
-  // draw grpc connections between services
-  /*
-  data.grpc.forEach((grpc) => {
-    const from = svcPositions.get(grpc.from);
-    const to = svcPositions.get(grpc.to);
-    if (from && to) {
-      result.push(
-        <Arrow
-          strokeWidth={1}
-          stroke="black"
-          fill="black"
-          points={[from.x + w / 2, from.y + h / 2, to.x + w / 2, to.y + h / 2]}
-        />
-      );
-    }
-  });*/
-
   return result;
 }
 
