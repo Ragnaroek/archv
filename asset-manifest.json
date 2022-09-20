@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/archv/static/css/main.e6c13ad2.css",
-    "main.js": "/archv/static/js/main.bfb579b5.js",
+    "main.js": "/archv/static/js/main.4a1d9d46.js",
     "index.html": "/archv/index.html",
     "main.e6c13ad2.css.map": "/archv/static/css/main.e6c13ad2.css.map",
-    "main.bfb579b5.js.map": "/archv/static/js/main.bfb579b5.js.map"
+    "main.4a1d9d46.js.map": "/archv/static/js/main.4a1d9d46.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.bfb579b5.js"
+    "static/js/main.4a1d9d46.js"
   ]
 }
