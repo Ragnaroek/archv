@@ -5,9 +5,11 @@ export type ArchvData = { services: string[]; grpc: Connection[] };
 
 export type State = {
   archvData?: ArchvData;
+  selectedService?: string;
 };
 const initialState: State = {
   archvData: undefined,
+  selectedService: undefined,
 };
 
 export const [useSub, Store] = createStore(initialState);

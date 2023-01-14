@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Stage, Layer, Rect, Text, Line } from "react-konva";
 import { useSub, Store, ArchvData, Connection } from "./state";
 
@@ -7,7 +7,23 @@ type Position = { x: number; y: number };
 type SectionInfo = { y: number; midSection: boolean };
 
 export default function App() {
-  const { archvData } = useSub(({ archvData }) => ({ archvData }));
+  const { archvData, selectedService } = useSub(
+    ({ archvData, selectedService }) => ({ archvData, selectedService })
+  );
+
+  useEffect(() => {
+    if (archvData) {
+      return;
+    }
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlData = urlParams.get("data");
+    if (urlData) {
+      let data: ArchvData = JSON.parse(window.atob(urlData));
+      Store.set(({ archvData }) => ({
+        archvData: data,
+      }));
+    }
+  }, [archvData]);
 
   function onFileChange(e: any) {
     let reader = new FileReader();
@@ -27,7 +43,15 @@ export default function App() {
     let types = inferServiceTypes(archvData);
     content = (
       <Stage width={width} height={height}>
-        <Layer>{buildMicroserviceGraph(width, height, types, archvData)}</Layer>
+        <Layer>
+          {buildMicroserviceGraph(
+            width,
+            height,
+            types,
+            archvData,
+            selectedService
+          )}
+        </Layer>
       </Stage>
     );
   } else {
@@ -92,7 +116,8 @@ function buildMicroserviceGraph(
   width: number,
   height: number,
   splitData: ServiceTypes,
-  data: ArchvData
+  data: ArchvData,
+  selectedService?: string
 ) {
   let result: any[] = [];
 
@@ -102,6 +127,9 @@ function buildMicroserviceGraph(
   let svcPositions = new Map<String, Position>();
   let sectionEndsY: SectionInfo[] = [];
   let svcsPerRow = (width - hBorder * 2) / w + svcGap;
+  let selectedConnections = selectedService
+    ? outGoingGrpcFor(selectedService, data)
+    : [];
 
   let numSection = 0; //TODO use a normal loop instead of forEach here, numSection becomes the i of the loop
   [
@@ -126,6 +154,19 @@ function buildMicroserviceGraph(
         row += 1;
       }
 
+      let stroke;
+      let strokeWidthSvc;
+      let strokeWidthCon;
+      if (selectedService === svc) {
+        stroke = "blue";
+        strokeWidthSvc = 3;
+        strokeWidthCon = 2;
+      } else {
+        stroke = "black";
+        strokeWidthSvc = 1;
+        strokeWidthCon = 1;
+      }
+
       result.push(
         <Rect
           x={x}
@@ -133,8 +174,13 @@ function buildMicroserviceGraph(
           width={w}
           height={h}
           fill={color}
-          stroke="black"
-          strokeWidth={1}
+          stroke={stroke}
+          strokeWidth={strokeWidthSvc}
+          onClick={() =>
+            Store.set(({ selectedService }) => ({
+              selectedService: svc,
+            }))
+          }
         ></Rect>
       );
       svcPositions.set(svc, { x: x, y: y });
@@ -144,6 +190,11 @@ function buildMicroserviceGraph(
 
       //outgoing connections
       const out = outGoingGrpcFor(svc, data);
+      let incoming = findIncoming(svc, selectedConnections);
+      if (incoming) {
+        //TODO paint this in blue (add metadata to connection for painting?)
+        out.push(incoming);
+      }
       let outWidth = Math.min(out.length * (outLineGap + 1), w);
       let conX = x + (w - outWidth) / 2;
       for (let i = 0; i < out.length; i++) {
@@ -169,8 +220,8 @@ function buildMicroserviceGraph(
         result.push(
           <Line
             points={[xStart, yStart, xEnd, yEnd]}
-            strokeWidth={1}
-            stroke="black"
+            strokeWidth={strokeWidthCon}
+            stroke={stroke}
           />
         );
         conX += outLineGap + 1;
@@ -237,4 +288,8 @@ function outGoingGrpcFor(svc: string, data: ArchvData): Connection[] {
     }
   });
   return result;
+}
+
+function findIncoming(svc: string, conn: Connection[]): Connection | undefined {
+  return conn.find((con) => con.to === svc);
 }
